@@ -102,32 +102,20 @@ func checkRow(r normRow) bool {
 // 1-based index) whose UAX #15 invariants this package does not yet satisfy. It
 // is a shrink-only conformance RATCHET: every row NOT listed here MUST pass, so
 // no change may introduce a new normalization regression, and a listed row that
-// starts passing is reported so the entry can be removed. Baseline captured
-// 2026-08-03 against Unicode 17.0.0: 19942/20034 rows pass (99.5408%), 92 gaps.
+// starts passing is reported so the entry can be removed.
 //
-// All 92 gaps are in @Part2 (the Canonical Order Test) and share one root cause:
-// the underlying canonical-combining-class (ccc) table does not yet carry the
-// non-zero ccc values assigned to combining marks introduced in Unicode 16.0 and
-// 17.0 (the 1AC0..1AFF extended-diacritics block, Garay 10D69..10D6D, Arabic
-// 10EFA..10EFB, Tulu-Tigalari 113CE..113D0, Gurung Khema 1612F, Ol Onal
-// 1E5EE..1E5EF and Tai Yo 1E6E3..1E6F5 marks). Because their ccc is read as 0,
-// the canonical reordering step leaves them in the wrong order for these mixed
-// combining sequences. Decomposition/composition of these code points is already
-// correct (they pass @Part0/@Part1); only relative reordering against older
-// marks is wrong. Closing this gap is a dedicated ccc-table update, tracked
-// separately, and must only shrink this set.
-var normKnownFailing = map[int]bool{
-	17694: true, 17695: true, 18052: true, 18053: true, 18054: true, 18055: true, 18056: true, 18057: true, 18058: true, 18059: true,
-	18060: true, 18061: true, 18062: true, 18063: true, 18064: true, 18065: true, 18066: true, 18067: true, 18068: true, 18069: true,
-	18070: true, 18071: true, 18072: true, 18073: true, 18074: true, 18075: true, 18076: true, 18077: true, 18078: true, 18079: true,
-	18080: true, 18081: true, 18082: true, 18083: true, 18084: true, 18085: true, 18086: true, 18087: true, 18088: true, 18089: true,
-	18090: true, 18091: true, 18092: true, 18093: true, 18094: true, 18095: true, 18096: true, 18097: true, 18098: true, 18099: true,
-	18100: true, 18101: true, 18102: true, 18103: true, 18104: true, 18105: true, 18640: true, 18641: true, 18642: true, 18643: true,
-	18644: true, 18645: true, 18646: true, 18647: true, 18648: true, 18649: true, 18654: true, 18655: true, 18656: true, 18657: true,
-	18758: true, 18759: true, 18760: true, 18761: true, 18762: true, 18763: true, 18818: true, 18819: true, 19026: true, 19027: true,
-	19028: true, 19029: true, 19030: true, 19031: true, 19032: true, 19033: true, 19034: true, 19035: true, 19036: true, 19037: true,
-	19038: true, 19039: true,
-}
+// The set is now EMPTY: all 20034 data rows pass (100.0000%) against Unicode
+// 17.0.0. The prior 92 gaps were all in @Part2 (the Canonical Order Test) and
+// shared one root cause: golang.org/x/text (Unicode 15.0 tables before go1.27)
+// reads ccc as 0 for the combining marks added in Unicode 16.0/17.0 (Arabic
+// U+0897, the extended diacritics U+1ACF..U+1AEB, Garay U+10D69..U+10D6D, Arabic
+// U+10EFA..U+10EFB, the Tulu-Tigalari/Gurung Khema viramas U+113CE..U+113D0 and
+// U+1612F, Ol Onal U+1E5EE..U+1E5EF and Tai Yo U+1E6E3..U+1E6F5), so the
+// canonical reordering step left them misordered against older marks. The
+// cccOverride table plus the reorder pass (see patch.go) restore the
+// authoritative ccc and close every gap; decomposition/composition were already
+// correct. Any future regression re-populates this map and fails CI.
+var normKnownFailing = map[int]bool{}
 
 // TestNormalizationTestConformance is the differential conformance gate against
 // the canonical UCD NormalizationTest.txt corpus. Every data row outside
