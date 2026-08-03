@@ -104,6 +104,67 @@ var newComposition = map[[2]rune]rune{
 	{0x16D63, 0x16D67}: 0x16D69,
 }
 
+// cccOverride carries the canonical-combining-class (ccc) values that UCD 17.0.0
+// (DerivedCombiningClass.txt) assigns to combining marks introduced in Unicode
+// 16.0/17.0 but that golang.org/x/text (Unicode 15.0 tables before go1.27) reads
+// as 0. These are the Arabic mark U+0897; the extended combining diacritics
+// U+1ACF..U+1AEB; Garay U+10D69..U+10D6D; Arabic U+10EFA..U+10EFB; the
+// Tulu-Tigalari and Gurung Khema viramas U+113CE..U+113D0 and U+1612F (ccc 9);
+// Ol Onal U+1E5EE..U+1E5EF and Tai Yo U+1E6E3..U+1E6F5. Because x/text reads
+// their ccc as 0 it treats them as starters and skips them in canonical
+// reordering; cccOverride restores the authoritative class so the reorder step
+// (see reorder in patch.go) orders mixed combining sequences as MRI does. On
+// go1.27+ x/text already carries these values and the override merely confirms
+// them. The map is the exact set of runes where x/text and UCD 17.0.0 disagree.
+var cccOverride = map[rune]uint8{
+	0x897:   230,
+	0x1ACF:  230,
+	0x1AD0:  230,
+	0x1AD1:  230,
+	0x1AD2:  230,
+	0x1AD3:  230,
+	0x1AD4:  230,
+	0x1AD5:  230,
+	0x1AD6:  230,
+	0x1AD7:  230,
+	0x1AD8:  230,
+	0x1AD9:  230,
+	0x1ADA:  230,
+	0x1ADB:  230,
+	0x1ADC:  230,
+	0x1ADD:  220,
+	0x1AE0:  230,
+	0x1AE1:  230,
+	0x1AE2:  230,
+	0x1AE3:  230,
+	0x1AE4:  230,
+	0x1AE5:  230,
+	0x1AE6:  220,
+	0x1AE7:  230,
+	0x1AE8:  230,
+	0x1AE9:  230,
+	0x1AEA:  230,
+	0x1AEB:  234,
+	0x10D69: 230,
+	0x10D6A: 230,
+	0x10D6B: 230,
+	0x10D6C: 230,
+	0x10D6D: 230,
+	0x10EFA: 220,
+	0x10EFB: 220,
+	0x113CE: 9,
+	0x113CF: 9,
+	0x113D0: 9,
+	0x1612F: 9,
+	0x1E5EE: 230,
+	0x1E5EF: 220,
+	0x1E6E3: 230,
+	0x1E6E6: 230,
+	0x1E6EE: 230,
+	0x1E6EF: 230,
+	0x1E6F5: 230,
+}
+
 // compositionOperand marks the runes that can start a new composition pair,
 // used as a cheap pre-filter before the composition scan.
 var compositionOperand = map[rune]bool{

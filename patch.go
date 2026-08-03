@@ -27,14 +27,68 @@ import "golang.org/x/text/unicode/norm"
 func patchUnicode17(s string, form Form) string {
 	switch form {
 	case NFD:
-		return norm.NFD.String(expand(s, true, false))
+		return reorder(norm.NFD.String(expand(s, true, false)))
 	case NFKD:
-		return norm.NFKD.String(expand(s, true, true))
+		return reorder(norm.NFKD.String(expand(s, true, true)))
 	case NFKC:
-		return compose(norm.NFKC.String(expand(s, true, true)))
+		return reorder(compose(norm.NFKC.String(expand(s, true, true))))
 	default: // NFC
-		return compose(norm.NFC.String(expand(s, true, false)))
+		return reorder(compose(norm.NFC.String(expand(s, true, false))))
 	}
+}
+
+// reorder re-imposes the UAX #15 canonical ordering on any combining sequence
+// that contains a Unicode 16.0/17.0 mark whose ccc golang.org/x/text (before
+// go1.27) reads as 0 (see cccOverride). x/text's own reorder step treats those
+// marks as starters and so leaves mixed sequences of old and new marks out of
+// order; this pass fixes exactly that. Strings holding none of the override
+// marks are already canonically ordered by x/text and are returned untouched, so
+// the pass is a no-op on the overwhelming majority of inputs and cannot perturb
+// them. The algorithm is the standard stable canonical sort: each combining mark
+// (ccc > 0) is bubbled back past any preceding mark of strictly greater ccc,
+// which leaves marks of equal ccc in their original relative order.
+func reorder(s string) string {
+	if !containsOverride(s) {
+		return s
+	}
+	rs := []rune(s)
+	for i := 1; i < len(rs); i++ {
+		cci := cccX(rs[i])
+		if cci == 0 {
+			continue
+		}
+		for j := i; j > 0; j-- {
+			ccp := cccX(rs[j-1])
+			if ccp == 0 || ccp <= cci {
+				break
+			}
+			rs[j-1], rs[j] = rs[j], rs[j-1]
+		}
+	}
+	return string(rs)
+}
+
+// containsOverride reports whether s holds any combining mark whose ccc x/text
+// misreports (a key of cccOverride), gating the reorder pass so it never runs
+// on strings x/text already ordered correctly.
+func containsOverride(s string) bool {
+	for _, r := range s {
+		if _, ok := cccOverride[r]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+// cccX returns the canonical combining class of r, preferring the UCD 17.0.0
+// override for the Unicode 16.0/17.0 marks x/text reads as 0 and otherwise
+// deferring to x/text's Unicode 15.0 tables (authoritative for every older
+// code point).
+func cccX(r rune) uint8 {
+	if c, ok := cccOverride[r]; ok {
+		return c
+	}
+	return ccc(r)
 }
 
 // expand rewrites the override decompositions present in s. canon enables the
