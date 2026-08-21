@@ -31,7 +31,17 @@ jobs:
       - if: runner.os != 'Windows'
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: head
+          # A RELEASED ruby, not head. The oracle compares this library against
+          # whatever MRI is installed, so gating on head means gating on a
+          # moving upstream: this lane can go red without a line of this
+          # repository changing. It did -- re-running the green 2026-08-03 run
+          # today, unmodified, fails, because ruby-head's normalisation moved
+          # between then and now. A gate that cannot tell "we regressed" from
+          # "upstream changed" is not a gate.
+          #
+          # Early warning against head is still wanted; see the oracle-head
+          # job below, which runs the same comparison and is allowed to fail.
+          ruby-version: '4.0'
       - run: go version
       - run: go vet ./...
       - run: go build ./...
@@ -107,3 +117,31 @@ jobs:
           go-version: stable
       - name: Build ${{ matrix.goos }}/wasm
         run: GOOS=${{ matrix.goos }} GOARCH=wasm go build ./...
+
+  # Early warning against ruby-head, deliberately NON-BLOCKING.
+  #
+  # The oracle compares this library against the installed MRI, so a
+  # normalisation change in ruby-head shows up here as a failure even though
+  # nothing in this repository moved. That is worth seeing and is not worth
+  # blocking a merge on: continue-on-error keeps the signal without letting an
+  # upstream nightly decide whether main is green.
+  #
+  # When this job goes red, the question to ask is which side changed -- run the
+  # same commit against the released ruby in the `test` job above, and if that
+  # passes, the divergence is upstream's and belongs in an issue rather than in
+  # a revert.
+  oracle-head:
+    name: oracle vs ruby-head (advisory)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: head
+      - run: ruby -e 'puts RUBY_VERSION'
+      - name: Differential oracle against ruby-head
+        run: go test -run 'TestOracle' -count=1 ./...
