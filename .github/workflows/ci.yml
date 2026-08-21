@@ -27,7 +27,17 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
-          go-version: stable
+          # NOT 'stable'. golang.org/x/text v0.41.0 selects its Unicode tables
+          # by TOOLCHAIN build tag -- tables15.0.0.go behind '!go1.27',
+          # tables17.0.0.go behind 'go1.27' -- so which Unicode version this
+          # library is built against changes when 'stable' advances, and the
+          # differential-vs-MRI oracle changes answer with it. That is not a
+          # property this repository controls, and it made main go red with no
+          # commit behind it: re-running the green 2026-08-03 run today fails.
+          #
+          # Pinned to the go.mod floor so the lane is reproducible. The advisory
+          # oracle-stable job below tracks the newer toolchain without gating.
+          go-version: '1.26.4'
       - if: runner.os != 'Windows'
         uses: ruby/setup-ruby@v1
         with:
@@ -107,3 +117,44 @@ jobs:
           go-version: stable
       - name: Build ${{ matrix.goos }}/wasm
         run: GOOS=${{ matrix.goos }} GOARCH=wasm go build ./...
+
+  # Early warning on the newer toolchain, deliberately NON-BLOCKING.
+  #
+  # golang.org/x/text picks its Unicode tables by build tag, so a newer Go means
+  # a different Unicode implementation underneath this library. That is worth
+  # watching and is not something a merge should be blocked on: it is upstream's
+  # state, not this repository's.
+  #
+  # As of go1.27 this job FAILS, and the failure is upstream's:
+  #
+  #   NFKC(U+16D68 U+FB01 U+113C2 U+0300 U+0316)
+  #     x/text on go1.27   U+16D68 f U+00EC U+113C2 U+0316
+  #     MRI 4.0.6          U+16D68 f i      U+113C2 U+0316 U+0300
+  #
+  # x/text composes the U+0300 into the i across the ccc-0 U+113C2 and then
+  # loses it. A ccc-0 character blocks composition, so MRI is right. Verified
+  # against raw norm.NFKC with no patching from this library, and ccc(U+113C2)
+  # reads 0 under both table sets.
+  #
+  # Two local compensations were tried and both were wrong, which is why this is
+  # a watch rather than a workaround: composing from NFKD with our own compose
+  # pass loses every composition x/text knows and we do not (our table holds the
+  # 81 Unicode 16/17 additions, not the full set), and segmenting the input at
+  # ccc-0 boundaries breaks Hangul, whose L+V+T jamo are all ccc 0 and must
+  # compose across those boundaries -- that one cost 11346 UCD
+  # NormalizationTest regressions.
+  oracle-stable-toolchain:
+    name: oracle on go stable (advisory)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0'
+      - run: go version && ruby -e 'puts RUBY_VERSION'
+      - name: Differential oracle against MRI
+        run: go test -run 'TestOracle' -count=1 ./...
