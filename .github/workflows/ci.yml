@@ -37,6 +37,11 @@ jobs:
           #
           # Pinned to the go.mod floor so the lane is reproducible. The advisory
           # oracle-stable job below tracks the newer toolchain without gating.
+          #
+          # Renovate is told to leave this value alone (see renovate.json): it
+          # read the pin as staleness and proposed 1.27.0 in #9, which is the
+          # exact change this comment exists to prevent. Unpin once
+          # golang.org/x/text is fixed upstream -- golang/go#81001.
           go-version: '1.26.4'
       - if: runner.os != 'Windows'
         uses: ruby/setup-ruby@v1

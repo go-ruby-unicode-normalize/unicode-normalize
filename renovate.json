@@ -1,4 +1,12 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["github>go-ruby-unicode-normalize/.github"]
+  "extends": ["github>go-ruby-unicode-normalize/.github"],
+  "packageRules": [
+    {
+      "description": "The setup-go pin in ci.yml is a deliberate correctness constraint, not staleness: golang.org/x/text picks its Unicode tables by toolchain build tag, so a Go 1.27 toolchain silently switches this package's normalisation to the Unicode 17 tables and the differential oracle against MRI fails. Renovate proposed exactly that in #9. The advisory oracle-stable-toolchain job is what tracks the newer toolchain, without gating. Unpin here only once golang.org/x/text is fixed upstream (golang/go#81001).",
+      "matchManagers": ["github-actions"],
+      "matchDepNames": ["go"],
+      "enabled": false
+    }
+  ]
 }
