@@ -159,7 +159,7 @@ jobs:
           go-version: stable
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '4.0'
+          ruby-version: '4.0.6'
       - run: go version && ruby -e 'puts RUBY_VERSION'
       - name: Differential oracle against MRI
         run: go test -run 'TestOracle' -count=1 ./...
