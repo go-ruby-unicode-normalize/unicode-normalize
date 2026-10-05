@@ -9,7 +9,7 @@ on:
 permissions:
   contents: read
 
-# Track the latest stable Go (org convention). go.mod floor is 1.26.4.
+# Track the latest stable Go (org convention). go.mod floor is 1.27.1.
 jobs:
   # Build, vet, race-test, and enforce 100% coverage. The differential-vs-MRI
   # oracle tests skip themselves on Windows and where ruby is absent, and gate
@@ -62,7 +62,7 @@ jobs:
   # Validate the library on the six supported 64-bit targets. amd64/arm64 run
   # natively; the rest run the suite under qemu-user. The MRI oracle tests skip
   # under qemu (no target-arch ruby), so these lanes exercise the normalizer and
-  # the Unicode 16/17 override logic on each architecture via the deterministic
+  # the Unicode 16/17 characters on each architecture via the deterministic
   # suite, which alone holds coverage at 100%.
   arch-native:
     name: arch ${{ matrix.label }}

@@ -104,17 +104,13 @@ func checkRow(r normRow) bool {
 // no change may introduce a new normalization regression, and a listed row that
 // starts passing is reported so the entry can be removed.
 //
-// The set is now EMPTY: all 20034 data rows pass (100.0000%) against Unicode
-// 17.0.0. The prior 92 gaps were all in @Part2 (the Canonical Order Test) and
-// shared one root cause: golang.org/x/text (Unicode 15.0 tables before go1.27)
-// reads ccc as 0 for the combining marks added in Unicode 16.0/17.0 (Arabic
-// U+0897, the extended diacritics U+1ACF..U+1AEB, Garay U+10D69..U+10D6D, Arabic
-// U+10EFA..U+10EFB, the Tulu-Tigalari/Gurung Khema viramas U+113CE..U+113D0 and
-// U+1612F, Ol Onal U+1E5EE..U+1E5EF and Tai Yo U+1E6E3..U+1E6F5), so the
-// canonical reordering step left them misordered against older marks. The
-// cccOverride table plus the reorder pass (see patch.go) restore the
-// authoritative ccc and close every gap; decomposition/composition were already
-// correct. Any future regression re-populates this map and fails CI.
+// The set is EMPTY: all 20034 data rows pass (100.0000%) against Unicode
+// 17.0.0. The 92 gaps once recorded here were all in @Part2 (the Canonical
+// Order Test) and came from x/text's Unicode 15.0 tables, which read ccc as 0
+// for the combining marks added in Unicode 16.0/17.0; a local override layer
+// closed them while the module still built below go1.27. Since the go 1.27.1
+// floor, x/text serves its Unicode 17.0.0 tables directly and that layer is
+// gone. Any future regression re-populates this map and fails CI.
 var normKnownFailing = map[int]bool{}
 
 // TestNormalizationTestConformance is the differential conformance gate against

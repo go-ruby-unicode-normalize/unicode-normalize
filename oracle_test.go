@@ -123,8 +123,8 @@ func checkCorpus(t *testing.T, bin string, inputs []string) {
 }
 
 // TestOracleCurated checks the documented edge cases against MRI: composed vs
-// decomposed round-trips, Hangul, compatibility folding, and the Unicode 16/17
-// override characters this package patches into x/text.
+// decomposed round-trips, Hangul, compatibility folding, and the characters
+// Unicode 16/17 added (absent from x/text's Unicode 15.0.0 tables).
 func TestOracleCurated(t *testing.T) {
 	bin := rubyBin(t)
 	inputs := []string{
@@ -148,15 +148,15 @@ func TestOracleCurated(t *testing.T) {
 		"f09cb396",                 // U+1CCD6 (outlined A, NFKC -> A)
 		"ea9fb1",                   // U+A7F1 (NFKC -> S)
 		"f096849ecc81f096849e",     // composition blocked by intervening mark
-		"42f09cb396",               // ordinary char + override char
+		"42f09cb396",               // ordinary char + Unicode 17 char
 	}
 	checkCorpus(t, bin, inputs)
 }
 
 // TestOracleAllSingleCodepoints normalizes every assigned scalar value against
 // MRI in all four forms. This is the differential equivalent of the official
-// NormalizationTest single-character rows and is what proves the x/text+override
-// composition matches MRI exactly (the surrogate range is skipped as it has no
+// NormalizationTest single-character rows and is what proves x/text matches MRI
+// exactly (the surrogate range is skipped as it has no
 // scalar value).
 func TestOracleAllSingleCodepoints(t *testing.T) {
 	if testing.Short() {
@@ -182,8 +182,8 @@ func TestOracleAllSingleCodepoints(t *testing.T) {
 }
 
 // TestOracleCombiningSequences fuzzes short sequences drawn from a pool of bases,
-// combining marks, Hangul jamo, compatibility characters and the Unicode 16/17
-// override characters and their decomposition targets, exercising canonical
+// combining marks, Hangul jamo, compatibility characters and the characters
+// Unicode 16/17 added together with their decomposition targets, exercising canonical
 // ordering, composition blocking and the new compositions together.
 func TestOracleCombiningSequences(t *testing.T) {
 	bin := rubyBin(t)

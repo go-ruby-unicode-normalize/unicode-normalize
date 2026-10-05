@@ -4,7 +4,7 @@
 
 [![Docs](https://img.shields.io/badge/docs-mkdocs--material-DC2626)](https://go-ruby-unicode-normalize.github.io/docs/)
 [![License](https://img.shields.io/badge/license-BSD--3--Clause-blue)](LICENSE)
-[![Go](https://img.shields.io/badge/go-1.26.4%2B-00ADD8)](https://go.dev/dl/)
+[![Go](https://img.shields.io/badge/go-1.27.1%2B-00ADD8)](https://go.dev/dl/)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-1a7f37)](#tests--coverage)
 
 **A pure-Go (no cgo) reimplementation of Ruby's
@@ -66,20 +66,13 @@ and `x/text` target **Unicode 17.0.0**, so they agree across the official
 NormalizationTest corpus and the Ruby-specific edge cases (Hangul composition,
 full/half-width and ligature compatibility, combining-mark ordering).
 
-`x/text v0.38.0` gates its Unicode 17.0.0 tables behind the `go1.27` build tag
-and otherwise falls back to Unicode 15.0.0. On this module's `go 1.26.4` floor
-that fallback leaves a handful of characters added in Unicode 16.0/17.0
-un-normalized relative to MRI:
-
-- new **canonical** decompositions / compositions in some Indic and historic
-  scripts (e.g. `U+16121` ⇄ `U+1611E U+1611E`, `U+105C9` ⇄ `U+105D2 U+0307`);
-- new **compatibility** mappings folding to ASCII (`U+A7F1` → `S`, the outlined
-  alphanumerics `U+1CCD6..U+1CCF9` → `A`–`Z` / `0`–`9`).
-
-This package patches exactly those characters (`tables_unicode17.go` +
-`patch.go`), so the result matches MRI on **every** toolchain. On `go1.27+`,
-where `x/text` already expands them, the override runes never appear in its
-output and the patch is a no-op.
+`x/text` selects its Unicode tables by build tag: Unicode 17.0.0 under `go1.27`,
+Unicode 15.0.0 otherwise. This module requires **Go 1.27.1**, so it is always
+built against the Unicode 17.0.0 tables and needs no local patching;
+`TestUnicodeVersion` fails if that precondition ever changes. (Before the
+1.27.1 floor, a small override layer patched the Unicode 16.0/17.0 additions
+into the 15.0.0 tables; it became a no-op under the 17.0.0 tables and was
+removed.)
 
 ## Tests & coverage
 
