@@ -122,14 +122,16 @@ jobs:
   # watching and is not something a merge should be blocked on: it is upstream's
   # state, not this repository's.
   #
-  # As of go1.27 this job FAILS, and the failure is upstream's:
+  # Until golang/go#81001 was fixed, this job FAILED under go1.27, and the
+  # failure was upstream's (it passes with x/text v0.42.0 under go1.27.1,
+  # measured 2026-10-05, which is why the gating lane is now on 1.27.1 too):
   #
   #   NFKC(U+16D68 U+FB01 U+113C2 U+0300 U+0316)
   #     x/text on go1.27   U+16D68 f U+00EC U+113C2 U+0316
   #     MRI 4.0.6          U+16D68 f i      U+113C2 U+0316 U+0300
   #
-  # x/text composes the U+0300 into the i across the ccc-0 U+113C2 and then
-  # loses it. A ccc-0 character blocks composition, so MRI is right. Verified
+  # x/text composed the U+0300 into the i across the ccc-0 U+113C2 and then
+  # lost it. A ccc-0 character blocks composition, so MRI is right. Verified
   # against raw norm.NFKC with no patching from this library, and ccc(U+113C2)
   # reads 0 under both table sets.
   #
