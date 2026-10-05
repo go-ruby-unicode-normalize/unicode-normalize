@@ -27,22 +27,14 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
-          # NOT 'stable'. golang.org/x/text v0.41.0 selects its Unicode tables
-          # by TOOLCHAIN build tag -- tables15.0.0.go behind '!go1.27',
-          # tables17.0.0.go behind 'go1.27' -- so which Unicode version this
-          # library is built against changes when 'stable' advances, and the
-          # differential-vs-MRI oracle changes answer with it. That is not a
-          # property this repository controls, and it made main go red with no
-          # commit behind it: re-running the green 2026-08-03 run today fails.
-          #
-          # Pinned to the go.mod floor so the lane is reproducible. The advisory
-          # oracle-stable job below tracks the newer toolchain without gating.
-          #
-          # Renovate is told to leave this value alone (see renovate.json): it
-          # read the pin as staleness and proposed 1.27.0 in #9, which is the
-          # exact change this comment exists to prevent. Unpin once
-          # golang.org/x/text is fixed upstream -- golang/go#81001.
-          go-version: '1.26.4'
+          # Pinned, not 'stable': golang.org/x/text selects its Unicode tables
+          # by toolchain build tag (tables15 behind '!go1.27', tables17 behind
+          # 'go1.27'), so a moving toolchain changes the oracle's answer with no
+          # commit. Held at 1.26.4 until golang/go#81001 was fixed; unpinned to
+          # 1.27.1 on 2026-10-05 after measuring x/text v0.42.0 under go1.27.1:
+          # the advisory oracle job passed in CI, and 61/61 tests passed
+          # locally against MRI 4.0.5. A bump is now an ordinary reviewed one.
+          go-version: '1.27.1'
       - if: runner.os != 'Windows'
         uses: ruby/setup-ruby@v1
         with:
