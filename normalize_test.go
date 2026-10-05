@@ -4,7 +4,11 @@
 
 package normalize
 
-import "testing"
+import (
+	"testing"
+
+	"golang.org/x/text/unicode/norm"
+)
 
 // These deterministic, ruby-free tests pin the MRI-observed results (captured
 // from ruby 4.0.5, Unicode 17.0.0) so the suite drives the 100% coverage gate on
@@ -83,7 +87,10 @@ func TestNormalize(t *testing.T) {
 		{"empty nfc", "", NFC, ""},
 		{"ascii nfkd", "68656c6c6f", NFKD, "68656c6c6f"},
 
-		// --- Unicode 16/17 canonical-group decomposition (NFD/NFKD) ---
+		// --- Unicode 16/17 canonical decomposition (NFD/NFKD) ---
+		// These pin characters that x/text's Unicode 15.0.0 tables (selected
+		// below go1.27) leave unnormalized, so a build against those tables
+		// fails here as well as in TestUnicodeVersion.
 		// U+105C9 -> U+105D2 U+0307
 		{"nfd new canonical", "f0909789", NFD, "f0909792cc87"},
 		{"nfkd new canonical", "f0909789", NFKD, "f0909792cc87"},
@@ -92,7 +99,7 @@ func TestNormalize(t *testing.T) {
 		// U+16128 -> U+1611E U+1611E U+16120 (multi-element decomposition)
 		{"nfd new canonical triple", "f09684a8", NFD, "f096849ef096849ef09684a0"},
 
-		// --- Unicode 16/17 canonical-group composition (NFC/NFKC) ---
+		// --- Unicode 16/17 canonical composition (NFC/NFKC) ---
 		// U+1611E U+1611E -> U+16121
 		{"nfc new composition", "f096849ef096849e", NFC, "f09684a1"},
 		// U+1611E U+1611E U+1611F -> U+16121 U+1611F -> U+16126 (stepwise)
@@ -103,7 +110,7 @@ func TestNormalize(t *testing.T) {
 		// U+105D2 U+0307 -> U+105C9 (composition with a real combining mark)
 		{"nfc new composition with mark", "f0909792cc87", NFC, "f0909789"},
 
-		// --- Unicode 16/17 compatibility-group folding (NFKC/NFKD) ---
+		// --- Unicode 16/17 compatibility folding (NFKC/NFKD) ---
 		{"nfkc outlined A", "f09cb396", NFKC, "41"},  // U+1CCD6 -> A
 		{"nfkd outlined A", "f09cb396", NFKD, "41"},  // U+1CCD6 -> A
 		{"nfkc outlined 0", "f09cb3b0", NFKC, "30"},  // U+1CCF0 -> 0
@@ -114,8 +121,7 @@ func TestNormalize(t *testing.T) {
 		// compatibility-group character is untouched by the canonical forms
 		{"nfc compat untouched", "f09cb396", NFC, "f09cb396"},
 		{"nfd compat untouched", "f09cb396", NFD, "f09cb396"},
-		// override character mixed with an ordinary one (exercises the plain
-		// passthrough inside the expansion pass).
+		// a Unicode 16/17 character mixed with an ordinary one.
 		{"nfkd ascii then outlined", "42f09cb396", NFKD, "4241"}, // B + outlined-A -> BA
 		{"nfd ascii then new canonical", "42f09684a1", NFD, "42f096849ef096849e"},
 
@@ -153,7 +159,7 @@ func TestIsNormalized(t *testing.T) {
 		{"folded is nfkc", "6669", NFKC, true},
 		{"ascii normalized all forms", "68656c6c6f", NFC, true},
 		{"empty is normalized", "", NFD, true},
-		// Unicode 16/17 override characters.
+		// characters Unicode 16/17 added.
 		{"new composed is nfc", "f09684a1", NFC, true},
 		{"new decomposed is not nfc", "f096849ef096849e", NFC, false},
 		{"new decomposed is nfd", "f096849ef096849e", NFD, true},
@@ -184,5 +190,17 @@ func TestFormString(t *testing.T) {
 		if got := f.String(); got != want {
 			t.Fatalf("Form(%d).String() = %q, want %q", int(f), got, want)
 		}
+	}
+}
+
+// TestUnicodeVersion pins the precondition this package rests on: MRI 4.0.5
+// normalizes against Unicode 17.0.0, and Normalize delegates to x/text with no
+// local patching, so x/text must be serving its Unicode 17.0.0 tables. It does
+// so only under the go1.27 build tag, which the go 1.27.1 floor in go.mod
+// guarantees; lowering that floor, or an x/text that changes its tables, fails
+// here before it can silently change results.
+func TestUnicodeVersion(t *testing.T) {
+	if norm.Version != "17.0.0" {
+		t.Fatalf("golang.org/x/text/unicode/norm.Version = %q, want \"17.0.0\" (MRI 4.0.5)", norm.Version)
 	}
 }

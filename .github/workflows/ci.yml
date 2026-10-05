@@ -9,7 +9,7 @@ on:
 permissions:
   contents: read
 
-# Track the latest stable Go (org convention). go.mod floor is 1.26.4.
+# Track the latest stable Go (org convention). go.mod floor is 1.27.1.
 jobs:
   # Build, vet, race-test, and enforce 100% coverage. The differential-vs-MRI
   # oracle tests skip themselves on Windows and where ruby is absent, and gate
@@ -27,22 +27,14 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
-          # NOT 'stable'. golang.org/x/text v0.41.0 selects its Unicode tables
-          # by TOOLCHAIN build tag -- tables15.0.0.go behind '!go1.27',
-          # tables17.0.0.go behind 'go1.27' -- so which Unicode version this
-          # library is built against changes when 'stable' advances, and the
-          # differential-vs-MRI oracle changes answer with it. That is not a
-          # property this repository controls, and it made main go red with no
-          # commit behind it: re-running the green 2026-08-03 run today fails.
-          #
-          # Pinned to the go.mod floor so the lane is reproducible. The advisory
-          # oracle-stable job below tracks the newer toolchain without gating.
-          #
-          # Renovate is told to leave this value alone (see renovate.json): it
-          # read the pin as staleness and proposed 1.27.0 in #9, which is the
-          # exact change this comment exists to prevent. Unpin once
-          # golang.org/x/text is fixed upstream -- golang/go#81001.
-          go-version: '1.26.4'
+          # Pinned, not 'stable': golang.org/x/text selects its Unicode tables
+          # by toolchain build tag (tables15 behind '!go1.27', tables17 behind
+          # 'go1.27'), so a moving toolchain changes the oracle's answer with no
+          # commit. Held at 1.26.4 until golang/go#81001 was fixed; unpinned to
+          # 1.27.1 on 2026-10-05 after measuring x/text v0.42.0 under go1.27.1:
+          # the advisory oracle job passed in CI, and 61/61 tests passed
+          # locally against MRI 4.0.5. A bump is now an ordinary reviewed one.
+          go-version: '1.27.1'
       - if: runner.os != 'Windows'
         uses: ruby/setup-ruby@v1
         with:
@@ -70,7 +62,7 @@ jobs:
   # Validate the library on the six supported 64-bit targets. amd64/arm64 run
   # natively; the rest run the suite under qemu-user. The MRI oracle tests skip
   # under qemu (no target-arch ruby), so these lanes exercise the normalizer and
-  # the Unicode 16/17 override logic on each architecture via the deterministic
+  # the Unicode 16/17 characters on each architecture via the deterministic
   # suite, which alone holds coverage at 100%.
   arch-native:
     name: arch ${{ matrix.label }}
@@ -85,7 +77,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
-          go-version: stable
+          go-version: 1.27.1
       - run: go env GOARCH && go test ./...
 
   arch-qemu:
@@ -103,7 +95,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
-          go-version: stable
+          go-version: 1.27.1
       - run: sudo apt-get update && sudo apt-get install -y qemu-user-static
       - name: Test under qemu (${{ matrix.goarch }})
         run: GOARCH=${{ matrix.goarch }} go test -exec=${{ matrix.qemu }} ./...
@@ -119,7 +111,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
-          go-version: stable
+          go-version: 1.27.1
       - name: Build ${{ matrix.goos }}/wasm
         run: GOOS=${{ matrix.goos }} GOARCH=wasm go build ./...
 
@@ -130,14 +122,16 @@ jobs:
   # watching and is not something a merge should be blocked on: it is upstream's
   # state, not this repository's.
   #
-  # As of go1.27 this job FAILS, and the failure is upstream's:
+  # Until golang/go#81001 was fixed, this job FAILED under go1.27, and the
+  # failure was upstream's (it passes with x/text v0.42.0 under go1.27.1,
+  # measured 2026-10-05, which is why the gating lane is now on 1.27.1 too):
   #
   #   NFKC(U+16D68 U+FB01 U+113C2 U+0300 U+0316)
   #     x/text on go1.27   U+16D68 f U+00EC U+113C2 U+0316
   #     MRI 4.0.6          U+16D68 f i      U+113C2 U+0316 U+0300
   #
-  # x/text composes the U+0300 into the i across the ccc-0 U+113C2 and then
-  # loses it. A ccc-0 character blocks composition, so MRI is right. Verified
+  # x/text composed the U+0300 into the i across the ccc-0 U+113C2 and then
+  # lost it. A ccc-0 character blocks composition, so MRI is right. Verified
   # against raw norm.NFKC with no patching from this library, and ccc(U+113C2)
   # reads 0 under both table sets.
   #
@@ -156,7 +150,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
-          go-version: stable
+          go-version: 1.27.1
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: '4.0.7'
